@@ -1,1 +1,1 @@
-# secret-scanning-alerts
+# enterprise-alerts-report
