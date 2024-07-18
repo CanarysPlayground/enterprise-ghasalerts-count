@@ -1,5 +1,6 @@
 import requests
 import csv
+import os
 
 GITHUB_API_URL = "https://api.github.com/graphql"
 GITHUB_REST_URL = "https://api.github.com"
