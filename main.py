@@ -120,18 +120,22 @@ def write_alerts_to_csv(org_names):
         writer.writeheader()
         for severity in ['high', 'critical']:
             for org in org_names:
-                print(f"Processing org: {org} with severity: {severity}")
-                alerts = get_alerts_count(org, severity)
-                owners = get_org_owners(org)
-                print(alerts)
-                writer.writerow({
-                    'organization': org,
-                    'severity': severity,
-                    'code_scanning': alerts['code_scanning'],
-                    'secret_scanning': alerts['secret_scanning'],
-                    'dependabot': alerts['dependabot'],
-                    'owners': owners
-                })
+                try:
+                    print(f"Processing org: {org} with severity: {severity}")
+                    alerts = get_alerts_count(org, severity)
+                    owners = get_org_owners(org)
+                    print(alerts)
+                    writer.writerow({
+                        'organization': org,
+                        'severity': severity,
+                        'code_scanning': alerts['code_scanning'],
+                        'secret_scanning': alerts['secret_scanning'],
+                        'dependabot': alerts['dependabot'],
+                        'owners': owners
+                    })
+                except Exception as e:
+                    print(f"Error processing organization {org}: {e}")
+                    continue
 
 org_names = get_organizations(enterprise_name)
 write_alerts_to_csv(org_names)
