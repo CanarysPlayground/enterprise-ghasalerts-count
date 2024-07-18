@@ -1,0 +1,14 @@
+name: 'Fetch and Report GitHub Data'
+description: 'Fetches GitHub Alerts Data'
+inputs:
+  enterprise_name:
+    description: 'GitHub Enterprise Name'
+    required: true
+  github_token:
+    description: 'Token for Authentication'
+    required: true
+    
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
