@@ -4,7 +4,7 @@ import os
 
 GITHUB_API_URL = "https://api.github.com/graphql"
 GITHUB_REST_URL = "https://api.github.com"
-access_token = "os.getenv('INPUT_GITHUB_TOKEN')"
+access_token = os.getenv('INPUT_GITHUB_TOKEN')
 enterprise_name = os.getenv('INPUT_ENTERPRISE_NAME')
 
 HEADERS = {
