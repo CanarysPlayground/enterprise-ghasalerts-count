@@ -1,11 +1,9 @@
 import requests
 import csv
-import os
 
 GITHUB_API_URL = "https://api.github.com/graphql"
-GITHUB_REST_URL = "https://api.github.com"
-access_token = os.getenv('INPUT_GITHUB_TOKEN')
-enterprise_name = os.getenv('INPUT_ENTERPRISE_NAME')
+enterprise_name = "canarys"
+access_token = ""
 
 HEADERS = {
     'Accept': 'application/vnd.github+json',
@@ -25,7 +23,7 @@ def get_organizations(enterprise_name):
     query = """
     query($cursor: String, $enterprise_name: String!) {
       enterprise(slug: $enterprise_name) {
-        organizations(first: 100, after: $cursor) {
+        organizations(first: 2, after: $cursor) {
           edges {
             node {
               login
@@ -81,21 +79,21 @@ def get_alerts_count(org_name, severity):
     }
 
     # Code Scanning Alerts
-    code_scanning_url = f'{GITHUB_REST_URL}/orgs/{org_name}/code-scanning/alerts?state=open&severity={severity}'
+    code_scanning_url = f'https://api.github.com/orgs/{org_name}/code-scanning/alerts?state=open&severity={severity}'
     alerts['code_scanning'] = get_paginated_alerts_count(code_scanning_url)
 
     # Secret Scanning Alerts
-    secret_scanning_url = f'{GITHUB_REST_URL}/orgs/{org_name}/secret-scanning/alerts?state=open&severity={severity}'
+    secret_scanning_url = f'https://api.github.com/orgs/{org_name}/secret-scanning/alerts?state=open&severity={severity}'
     alerts['secret_scanning'] = get_paginated_alerts_count(secret_scanning_url)
 
     # Dependabot Alerts
-    dependabot_url = f'{GITHUB_REST_URL}/orgs/{org_name}/dependabot/alerts?state=open&severity={severity}'
+    dependabot_url = f'https://api.github.com/orgs/{org_name}/dependabot/alerts?state=open&severity={severity}'
     alerts['dependabot'] = get_paginated_alerts_count(dependabot_url)
 
     return alerts
 
 def get_user_email(username):
-    url = f'{GITHUB_REST_URL}/users/{username}'
+    url = f'https://api.github.com/users/{username}'
     response = requests.get(url, headers=HEADERS)
     if response.status_code == 200:
         user_data = response.json()
@@ -103,7 +101,7 @@ def get_user_email(username):
     return 'N/A'
 
 def get_org_owners(org_name):
-    url = f'{GITHUB_REST_URL}/orgs/{org_name}/members?role=admin'
+    url = f'https://api.github.com/orgs/{org_name}/members?role=admin'
     response = requests.get(url, headers=HEADERS)
     owners = []
     if response.status_code == 200:
@@ -114,28 +112,24 @@ def get_org_owners(org_name):
     return ', '.join(owners) if owners else 'N/A'
 
 def write_alerts_to_csv(org_names):
-    with open('github_alerts-with-owners.csv', 'w', newline='') as csvfile:
+    with open('github_alerts-with-owners-1.csv', 'w', newline='') as csvfile:
         fieldnames = ['organization', 'severity', 'code_scanning', 'secret_scanning', 'dependabot', 'owners']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for severity in ['high', 'critical']:
             for org in org_names:
-                try:
-                    print(f"Processing org: {org} with severity: {severity}")
-                    alerts = get_alerts_count(org, severity)
-                    owners = get_org_owners(org)
-                    print(alerts)
-                    writer.writerow({
-                        'organization': org,
-                        'severity': severity,
-                        'code_scanning': alerts['code_scanning'],
-                        'secret_scanning': alerts['secret_scanning'],
-                        'dependabot': alerts['dependabot'],
-                        'owners': owners
-                    })
-                except Exception as e:
-                    print(f"Error processing organization {org}: {e}")
-                    continue
+                print(f"Processing org: {org} with severity: {severity}")
+                alerts = get_alerts_count(org, severity)
+                owners = get_org_owners(org)
+                print(alerts)
+                writer.writerow({
+                    'organization': org,
+                    'severity': severity,
+                    'code_scanning': alerts['code_scanning'],
+                    'secret_scanning': alerts['secret_scanning'],
+                    'dependabot': alerts['dependabot'],
+                    'owners': owners
+                })
 
 org_names = get_organizations(enterprise_name)
 write_alerts_to_csv(org_names)
