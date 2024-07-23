@@ -19,7 +19,8 @@ def run_query(query, variables=None):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"Query failed to run with status code {response.status_code}. {response.json()}")
+        error_message = response.json().get('message', 'No error message provided')
+        raise Exception(f"Query failed to run with status code {response.status_code}. Error message: {error_message}")
 
 def get_organizations(enterprise_name):
     query = """
@@ -44,6 +45,9 @@ def get_organizations(enterprise_name):
 
     while True:
         result = run_query(query, variables)
+        print("Result:", result)  # Log the result for debugging
+        if result is None or 'data' not in result or 'enterprise' not in result['data'] or 'organizations' not in result['data']['enterprise']:
+            raise ValueError(f"Unexpected response structure: {result}")
         orgs = result['data']['enterprise']['organizations']['edges']
         for org in orgs:
             organizations.append(org['node']['login'])
@@ -70,6 +74,7 @@ def get_paginated_alerts_count(url):
                         url = link[link.find('<') + 1:link.find('>')]
                         break
         else:
+            print(f"Failed to fetch alerts from {url}. Status code: {response.status_code}. Response: {response.json()}")
             url = None
     return alerts_count
 
@@ -111,6 +116,8 @@ def get_org_owners(org_name):
         for admin in admins:
             email = get_user_email(admin['login'])
             owners.append(f"{admin['login']} ({email})")
+    else:
+        print(f"Failed to fetch owners for {org_name}. Status code: {response.status_code}. Response: {response.json()}")
     return ', '.join(owners) if owners else 'N/A'
 
 def write_alerts_to_csv(org_names):
