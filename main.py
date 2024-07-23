@@ -50,7 +50,10 @@ def get_organizations(enterprise_name):
             raise ValueError(f"Unexpected response structure: {result}")
         orgs = result['data']['enterprise']['organizations']['edges']
         for org in orgs:
-            organizations.append(org['node']['login'])
+            if org['node']['login'] is not None:
+                organizations.append(org['node']['login'])
+            else:
+                continue
             print(org['node']['login'])
         page_info = result['data']['enterprise']['organizations']['pageInfo']
         if not page_info['hasNextPage']:
