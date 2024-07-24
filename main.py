@@ -50,7 +50,7 @@ def get_organizations(enterprise_name):
             raise ValueError(f"Unexpected response structure: {result}")
         orgs = result['data']['enterprise']['organizations']['edges']
         for org in orgs:
-            if org['node']['login'] is not None:
+            if org['node'] is not None and 'login' in org['node']:
                 organizations.append(org['node']['login'])
             else:
                 continue
