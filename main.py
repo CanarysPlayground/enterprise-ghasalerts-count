@@ -19,8 +19,7 @@ def run_query(query, variables=None):
     if response.status_code == 200:
         return response.json()
     else:
-        error_message = response.json().get('message', 'No error message provided')
-        raise Exception(f"Query failed to run with status code {response.status_code}. Error message: {error_message}")
+        raise Exception(f"Query failed to run with status code {response.status_code}. {response.json()}")
 
 def get_organizations(enterprise_name):
     query = """
@@ -45,21 +44,22 @@ def get_organizations(enterprise_name):
 
     while True:
         result = run_query(query, variables)
-        print("Result:", result)  # Log the result for debugging
-        if result is None or 'data' not in result or 'enterprise' not in result['data'] or 'organizations' not in result['data']['enterprise']:
-            raise ValueError(f"Unexpected response structure: {result}")
-        orgs = result['data']['enterprise']['organizations']['edges']
+        if 'data' not in result or 'enterprise' not in result['data']:
+            print(f"Error: Missing 'data' or 'enterprise' in the result: {result}")
+            break
+
+        orgs = result['data']['enterprise'].get('organizations', {}).get('edges', [])
         for org in orgs:
-            if org['node'] is not None and 'login' in org['node']:
+            print("org-name:",org['node']['login'])
+            if org and 'node' in org and 'login' in org['node']:
                 organizations.append(org['node']['login'])
             else:
                 continue
-            print(org['node']['login'])
-        page_info = result['data']['enterprise']['organizations']['pageInfo']
-        if not page_info['hasNextPage']:
+        page_info = result['data']['enterprise'].get('organizations', {}).get('pageInfo', {})
+        if not page_info.get('hasNextPage'):
             break
-        variables['cursor'] = page_info['endCursor']
-
+        variables['cursor'] = page_info.get('endCursor')
+        print("org count:",len(organizations))
     return organizations
 
 def get_paginated_alerts_count(url):
@@ -77,7 +77,6 @@ def get_paginated_alerts_count(url):
                         url = link[link.find('<') + 1:link.find('>')]
                         break
         else:
-            print(f"Failed to fetch alerts from {url}. Status code: {response.status_code}. Response: {response.json()}")
             url = None
     return alerts_count
 
@@ -89,21 +88,21 @@ def get_alerts_count(org_name, severity):
     }
 
     # Code Scanning Alerts
-    code_scanning_url = f'{GITHUB_REST_URL}/orgs/{org_name}/code-scanning/alerts?state=open&severity={severity}'
+    code_scanning_url = f'https://api.github.com/orgs/{org_name}/code-scanning/alerts?state=open&severity={severity}'
     alerts['code_scanning'] = get_paginated_alerts_count(code_scanning_url)
 
     # Secret Scanning Alerts
-    secret_scanning_url = f'{GITHUB_REST_URL}/orgs/{org_name}/secret-scanning/alerts?state=open&severity={severity}'
+    secret_scanning_url = f'https://api.github.com/orgs/{org_name}/secret-scanning/alerts?state=open&severity={severity}'
     alerts['secret_scanning'] = get_paginated_alerts_count(secret_scanning_url)
 
     # Dependabot Alerts
-    dependabot_url = f'{GITHUB_REST_URL}/orgs/{org_name}/dependabot/alerts?state=open&severity={severity}'
+    dependabot_url = f'https://api.github.com/orgs/{org_name}/dependabot/alerts?state=open&severity={severity}'
     alerts['dependabot'] = get_paginated_alerts_count(dependabot_url)
 
     return alerts
 
 def get_user_email(username):
-    url = f'{GITHUB_REST_URL}/users/{username}'
+    url = f'https://api.github.com/users/{username}'
     response = requests.get(url, headers=HEADERS)
     if response.status_code == 200:
         user_data = response.json()
@@ -111,7 +110,7 @@ def get_user_email(username):
     return 'N/A'
 
 def get_org_owners(org_name):
-    url = f'{GITHUB_REST_URL}/orgs/{org_name}/members?role=admin'
+    url = f'https://api.github.com/orgs/{org_name}/members?role=admin'
     response = requests.get(url, headers=HEADERS)
     owners = []
     if response.status_code == 200:
@@ -119,33 +118,27 @@ def get_org_owners(org_name):
         for admin in admins:
             email = get_user_email(admin['login'])
             owners.append(f"{admin['login']} ({email})")
-    else:
-        print(f"Failed to fetch owners for {org_name}. Status code: {response.status_code}. Response: {response.json()}")
     return ', '.join(owners) if owners else 'N/A'
 
 def write_alerts_to_csv(org_names):
-    with open('github_alerts-with-owners.csv', 'w', newline='') as csvfile:
+    with open('github_alerts-with-owners-1.csv', 'w', newline='') as csvfile:
         fieldnames = ['organization', 'severity', 'code_scanning', 'secret_scanning', 'dependabot', 'owners']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for severity in ['high', 'critical']:
             for org in org_names:
-                try:
-                    print(f"Processing org: {org} with severity: {severity}")
-                    alerts = get_alerts_count(org, severity)
-                    owners = get_org_owners(org)
-                    print(alerts)
-                    writer.writerow({
-                        'organization': org,
-                        'severity': severity,
-                        'code_scanning': alerts['code_scanning'],
-                        'secret_scanning': alerts['secret_scanning'],
-                        'dependabot': alerts['dependabot'],
-                        'owners': owners
-                    })
-                except Exception as e:
-                    print(f"Error processing organization {org}: {e}")
-                    continue
+                print(f"Processing org: {org} with severity: {severity}")
+                alerts = get_alerts_count(org, severity)
+                owners = get_org_owners(org)
+                print(alerts)
+                writer.writerow({
+                    'organization': org,
+                    'severity': severity,
+                    'code_scanning': alerts['code_scanning'],
+                    'secret_scanning': alerts['secret_scanning'],
+                    'dependabot': alerts['dependabot'],
+                    'owners': owners
+                })
 
 org_names = get_organizations(enterprise_name)
 write_alerts_to_csv(org_names)
