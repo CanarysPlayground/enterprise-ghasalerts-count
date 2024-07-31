@@ -50,8 +50,8 @@ def get_organizations(enterprise_name):
 
         orgs = result['data']['enterprise'].get('organizations', {}).get('edges', [])
         for org in orgs:
-            print("org-name:",org['node']['login'])
             if org and 'node' in org and 'login' in org['node']:
+                print("org-name:",org['node']['login'])
                 organizations.append(org['node']['login'])
             else:
                 continue
