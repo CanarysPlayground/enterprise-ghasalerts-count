@@ -121,7 +121,7 @@ def get_org_owners(org_name):
     return ', '.join(owners) if owners else 'N/A'
 
 def write_alerts_to_csv(org_names):
-    with open('github_alerts-with-owners-1.csv', 'w', newline='') as csvfile:
+    with open('github_alerts-with-owners.csv', 'w', newline='') as csvfile:
         fieldnames = ['organization', 'severity', 'code_scanning', 'secret_scanning', 'dependabot', 'owners']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
