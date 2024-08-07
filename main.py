@@ -51,7 +51,7 @@ def get_organizations(enterprise_name):
         orgs = result['data']['enterprise'].get('organizations', {}).get('edges', [])
         for org in orgs:
             if org and 'node' in org and 'login' in org['node']:
-                print("org-name:",org['node']['login'])
+                print("org-name:", org['node']['login'])
                 organizations.append(org['node']['login'])
             else:
                 continue
@@ -59,7 +59,7 @@ def get_organizations(enterprise_name):
         if not page_info.get('hasNextPage'):
             break
         variables['cursor'] = page_info.get('endCursor')
-        print("org count:",len(organizations))
+        print("org count:", len(organizations))
     return organizations
 
 def get_paginated_alerts_count(url):
@@ -87,17 +87,29 @@ def get_alerts_count(org_name, severity):
         'dependabot': 0
     }
 
-    # Code Scanning Alerts
-    code_scanning_url = f'https://api.github.com/orgs/{org_name}/code-scanning/alerts?state=open&severity={severity}'
-    alerts['code_scanning'] = get_paginated_alerts_count(code_scanning_url)
+    try:
+        # Code Scanning Alerts
+        code_scanning_url = f'https://api.github.com/orgs/{org_name}/code-scanning/alerts?state=open&severity={severity}'
+        alerts['code_scanning'] = get_paginated_alerts_count(code_scanning_url)
+    except Exception as e:
+        print(f"Failed to fetch code scanning alerts for {org_name}: {e}")
+        return None
 
-    # Secret Scanning Alerts
-    secret_scanning_url = f'https://api.github.com/orgs/{org_name}/secret-scanning/alerts?state=open&severity={severity}'
-    alerts['secret_scanning'] = get_paginated_alerts_count(secret_scanning_url)
+    try:
+        # Secret Scanning Alerts
+        secret_scanning_url = f'https://api.github.com/orgs/{org_name}/secret-scanning/alerts?state=open&severity={severity}'
+        alerts['secret_scanning'] = get_paginated_alerts_count(secret_scanning_url)
+    except Exception as e:
+        print(f"Failed to fetch secret scanning alerts for {org_name}: {e}")
+        return None
 
-    # Dependabot Alerts
-    dependabot_url = f'https://api.github.com/orgs/{org_name}/dependabot/alerts?state=open&severity={severity}'
-    alerts['dependabot'] = get_paginated_alerts_count(dependabot_url)
+    try:
+        # Dependabot Alerts
+        dependabot_url = f'https://api.github.com/orgs/{org_name}/dependabot/alerts?state=open&severity={severity}'
+        alerts['dependabot'] = get_paginated_alerts_count(dependabot_url)
+    except Exception as e:
+        print(f"Failed to fetch dependabot alerts for {org_name}: {e}")
+        return None
 
     return alerts
 
@@ -129,6 +141,9 @@ def write_alerts_to_csv(org_names):
             for org in org_names:
                 print(f"Processing org: {org} with severity: {severity}")
                 alerts = get_alerts_count(org, severity)
+                if alerts is None or all(count == 0 for count in alerts.values()):
+                    print(f"Skipping org {org} due to zero alerts.")
+                    continue
                 owners = get_org_owners(org)
                 print(alerts)
                 writer.writerow({
