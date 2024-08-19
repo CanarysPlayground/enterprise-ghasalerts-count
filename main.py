@@ -141,9 +141,6 @@ def write_alerts_to_csv(org_names):
             for org in org_names:
                 print(f"Processing org: {org} with severity: {severity}")
                 alerts = get_alerts_count(org, severity)
-                if alerts is None or all(count == 0 for count in alerts.values()):
-                    print(f"Skipping org {org} due to zero alerts.")
-                    continue
                 owners = get_org_owners(org)
                 print(alerts)
                 writer.writerow({
